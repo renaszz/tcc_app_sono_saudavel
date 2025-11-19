@@ -103,7 +103,9 @@ export default function DetalheRegistroScreen() {
     const alertas = [];
 
     const telaPositiva = registro.tempo_tela_min <= 30;
-    const sonoPositivo = registro.duracao_horas >= 7;
+    const sonoInsuficiente = registro.duracao_horas < 6.5;
+    const sonoExcessivo = registro.duracao_horas > 9.5;
+    const sonoPositivo = !sonoInsuficiente && !sonoExcessivo;
 
     if (telaPositiva && sonoPositivo) {
       alertas.push({
@@ -124,13 +126,23 @@ export default function DetalheRegistroScreen() {
         });
       }
 
-      if (!sonoPositivo) {
+      if (sonoInsuficiente) {
         alertas.push({
           id: 2,
           icon: 'moon-outline' as keyof typeof Ionicons.glyphMap,
           titulo: 'Poucas Horas de Sono',
           texto:
-            'A privação do sono pode causar déficits de atenção e prejuízos no desempenho cognitivo. Tente manter uma rotina mais regular.',
+            'A privação do sono pode causar déficits de atenção e prejuízos no desempenho cognitivo. Tente dormir mais cedo ou manter uma rotina mais regular.',
+        });
+      }
+
+      if (sonoExcessivo) {
+        alertas.push({
+          id: 3,
+          icon: 'moon-outline' as keyof typeof Ionicons.glyphMap,
+          titulo: 'Excesso de Sono',
+          texto:
+            'Dormir em excesso desregula seu ritmo circadiano, o que pode levar à sensação de cansaço. Concentre-se em manter sua meta de sono consistente para acordar mais disposto.',
         });
       }
     }

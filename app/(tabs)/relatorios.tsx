@@ -31,13 +31,16 @@ type RegistroProcessado = RegistroDB & {
 
 type ChartData = {
   x_id: number;
-  valor: number;
+  valor: number; // Valor limitado (clamped) para o gráfico
   dia: string;
 };
 
 type ActiveTab = 'sono' | 'tela';
 
 const diasDaSemana = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+const MAX_SONO_HORAS_CHART = 9.8;
+const MAX_TELA_MIN_CHART = 88;
+const newYellow = '#FFDA00';
 
 export default function RelatoriosScreen() {
   const font = useFont(Inter_400Regular, 12);
@@ -96,13 +99,12 @@ export default function RelatoriosScreen() {
   useEffect(() => {
     const dates = [];
     
-    // MUDANÇA AQUI TAMBÉM: O gráfico deve seguir a mesma lógica (até Ontem)
     const today = new Date();
     const endOfPeriod = new Date(today);
-    endOfPeriod.setDate(today.getDate() - 1); // Fim = Ontem
+    endOfPeriod.setDate(today.getDate() - 1);
 
     const startOfChart = new Date(endOfPeriod);
-    startOfChart.setDate(startOfChart.getDate() - 6); // Início = Ontem - 6
+    startOfChart.setDate(startOfChart.getDate() - 6);
 
     for (let i = 0; i < 7; i++) {
       const d = new Date(startOfChart);
@@ -119,11 +121,16 @@ export default function RelatoriosScreen() {
       );
 
       let valor = 0;
+      const maxLimit = activeTab === 'sono' ? MAX_SONO_HORAS_CHART : MAX_TELA_MIN_CHART;
+
       if (record) {
-        valor =
+        const realValue =
           activeTab === 'sono'
             ? record.duracao_horas
             : record.tempo_tela_min;
+        
+        // Limita o valor para o ponto de plotagem, garantindo que não exceda o limite visual.
+        valor = Math.min(realValue, maxLimit); 
       }
 
       return {
@@ -133,7 +140,7 @@ export default function RelatoriosScreen() {
       };
     });
 
-    setChartData(dataForChart);
+    setChartData(dataForChart as ChartData[]);
   }, [registrosDaSemana, activeTab]);
 
   const onRefresh = async () => {
@@ -159,9 +166,12 @@ export default function RelatoriosScreen() {
   );
 
   const renderStatusIcons = (item: RegistroProcessado) => {
-    const temPoucoSono = item.duracao_horas < 7;
+    const temPoucoSono = item.duracao_horas < 6.5;
+    const temSonoExcessivo = item.duracao_horas > 9.5;
     const temMuitaTela = item.tempo_tela_min > 30;
-    const diaPerfeito = !temPoucoSono && !temMuitaTela;
+    const temProblemaSono = temPoucoSono || temSonoExcessivo;
+
+    const diaPerfeito = !temProblemaSono && !temMuitaTela;
 
     if (diaPerfeito) {
       return (
@@ -171,7 +181,7 @@ export default function RelatoriosScreen() {
 
     return (
       <View style={styles.iconsRow}>
-        {temPoucoSono && (
+        {temProblemaSono && (
           <Ionicons name="moon-outline" size={24} color={COLORS.ruim} style={{ marginLeft: 8 }} />
         )}
         {temMuitaTela && (
@@ -227,17 +237,21 @@ export default function RelatoriosScreen() {
 
   const hasChartData = chartData.some((d) => d.valor > 0);
 
-  const newYellow = '#FFDA00';
+  // Revertendo para os limites originais (10h e 90m)
+  const isSono = activeTab === 'sono';
+  const yDomain: [number, number] = isSono
+    ? [0, MAX_SONO_HORAS_CHART]
+    : [0, MAX_TELA_MIN_CHART];
+
+  const yTickValues = isSono
+    ? [0, 2, 4, 6, 8, 10]
+    : [0, 15, 30, 45, 60, 75, 90];
+
   const gradientColors =
-    activeTab === 'sono'
+    isSono
       ? ['#37E2D5', '#37E2D580']
       : [newYellow, newYellow + '80'];
 
-  const isSono = activeTab === 'sono';
-  const yDomain: [number, number] = isSono ? [0, 10] : [0, 90];
-  const yTickValues = isSono
-    ? [0, 2, 4, 6, 8, 10]
-    : [0, 15, 30, 45, 60, 75];
 
   return (
     <View style={styles.container}>
@@ -398,7 +412,6 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
   },
   iconsRow: {
     flexDirection: 'row',

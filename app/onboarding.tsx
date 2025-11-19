@@ -43,21 +43,18 @@ export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
 
   const [nome, setNome] = useState('');
-  const [horarioDormirMinutos, setHorarioDormirMinutos] = useState(1320); // 22:00 padrão
+  const [horarioDormirMinutos, setHorarioDormirMinutos] = useState(1320);
   const [tempoTela, setTempoTela] = useState(45);
-  const [metaSonoMinutos, setMetaSonoMinutos] = useState(480); // 8h padrão
+  const [metaSonoMinutos, setMetaSonoMinutos] = useState(480);
 
-  const [showTimePicker, setShowTimePicker] = useState(false); 
-  const [showDurationPicker, setShowDurationPicker] = useState(false); 
-  const [showScreenTimePicker, setShowScreenTimePicker] = useState(false); 
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [showScreenTimePicker, setShowScreenTimePicker] = useState(false);
 
-  const finalizarOnboarding = async (permitirNotificacao: boolean) => {
+  const finalizarOnboarding = async () => {
     try {
-      let notificacoesAtivas = 0;
-      if (permitirNotificacao) {
-        const { status } = await Notifications.requestPermissionsAsync();
-        notificacoesAtivas = status === 'granted' ? 1 : 0;
-      }
+      const { status } = await Notifications.requestPermissionsAsync();
+      const notificacoesAtivas = status === 'granted' ? 1 : 0;
 
       const metaSonoHoras = metaSonoMinutos / 60;
 
@@ -73,14 +70,14 @@ export default function OnboardingScreen() {
       `, [nome, horarioDormirMinutos, tempoTela, metaSonoHoras, notificacoesAtivas]);
 
       router.replace('/(tabs)');
-      
+
     } catch (error) {
       console.error("Erro ao salvar onboarding:", error);
     }
   };
 
   const nextStep = () => {
-    if (step === 0 && nome.trim() === '') return; 
+    if (step === 0 && nome.trim() === '') return;
     setStep(prev => prev + 1);
   };
 
@@ -88,11 +85,11 @@ export default function OnboardingScreen() {
 
   const renderStepContent = () => {
     switch (step) {
-      case 0: // NOME
+      case 0:
         return (
           <>
             <Text style={styles.questionText}>Como devemos te chamar?</Text>
-            <TextInput 
+            <TextInput
               style={styles.input}
               placeholder="Seu nome ou apelido"
               placeholderTextColor={COLORS.textoSecundario}
@@ -106,11 +103,11 @@ export default function OnboardingScreen() {
           </>
         );
 
-      case 1: // HORÁRIO DE DORMIR
+      case 1:
         return (
           <>
             <Text style={styles.questionText}>Qual sua meta de horário para dormir?</Text>
-            
+
             <TouchableOpacity style={styles.selectionButton} onPress={() => setShowTimePicker(true)}>
               <Text style={styles.selectionLabel}>Horário escolhido</Text>
               <Text style={styles.selectionValue}>{formatTime(horarioDormirMinutos)}</Text>
@@ -128,11 +125,11 @@ export default function OnboardingScreen() {
           </>
         );
 
-      case 2: // TEMPO DE TELA
+      case 2:
         return (
           <>
             <Text style={styles.questionText}>Quanto tempo antes de dormir você quer deixar o celular?</Text>
-            
+
             <TouchableOpacity style={styles.selectionButton} onPress={() => setShowScreenTimePicker(true)}>
               <Text style={styles.selectionLabel}>Lembrete sobre o uso de telas</Text>
               <Text style={styles.selectionValueCiano}>
@@ -142,7 +139,7 @@ export default function OnboardingScreen() {
             </TouchableOpacity>
 
             <View style={styles.navButtons}>
-               <TouchableOpacity onPress={prevStep} style={styles.btnBack}>
+              <TouchableOpacity onPress={prevStep} style={styles.btnBack}>
                 <Ionicons name="arrow-back" size={24} color={COLORS.textoSecundario} />
               </TouchableOpacity>
               <TouchableOpacity style={[styles.btnProximo, styles.btnFlex]} onPress={nextStep}>
@@ -152,19 +149,19 @@ export default function OnboardingScreen() {
           </>
         );
 
-      case 3: // META DE SONO
+      case 3:
         return (
           <>
             <Text style={styles.questionText}>Qual sua meta de tempo de sono?</Text>
-             
-             <TouchableOpacity style={styles.selectionButton} onPress={() => setShowDurationPicker(true)}>
+
+            <TouchableOpacity style={styles.selectionButton} onPress={() => setShowDurationPicker(true)}>
               <Text style={styles.selectionLabel}>Meta de sono</Text>
               <Text style={styles.selectionValue}>{formatDuration(metaSonoMinutos)}</Text>
               <Text style={styles.tapToEditText}>(Toque para alterar)</Text>
             </TouchableOpacity>
 
             <View style={styles.navButtons}>
-               <TouchableOpacity onPress={prevStep} style={styles.btnBack}>
+              <TouchableOpacity onPress={prevStep} style={styles.btnBack}>
                 <Ionicons name="arrow-back" size={24} color={COLORS.textoSecundario} />
               </TouchableOpacity>
               <TouchableOpacity style={[styles.btnProximo, styles.btnFlex]} onPress={nextStep}>
@@ -174,21 +171,17 @@ export default function OnboardingScreen() {
           </>
         );
 
-      case 4: // NOTIFICAÇÕES
+      case 4:
         return (
           <>
-            <Text style={styles.questionText}>Deseja ativar as notificações?</Text>
+            <Text style={styles.questionText}>Ative as notificações para um sono melhor!</Text>
             <Text style={styles.subText}>
-              Alertas sobre o uso de telas antes de dormir e lembretes para registrar seu sono pela manhã.
+              Precisamos da sua permissão para enviar alertas sobre o uso de telas antes de dormir e lembretes para registrar seu sono pela manhã.
             </Text>
-            
-            <TouchableOpacity style={styles.btnAction} onPress={() => finalizarOnboarding(true)}>
-              <Text style={styles.btnActionText}>Sim, ativar notificações</Text>
+
+            <TouchableOpacity style={styles.btnAction} onPress={finalizarOnboarding}>
+              <Text style={styles.btnActionText}>Sim, ativar as notificações</Text>
               <Ionicons name="notifications" size={20} color={COLORS.secundario} />
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.btnLink} onPress={() => finalizarOnboarding(false)}>
-              <Text style={styles.linkText}>Não, obrigado</Text>
             </TouchableOpacity>
           </>
         );
@@ -196,21 +189,21 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <ImageBackground 
-      source={require('../assets/images/onboarding-bg.jpeg')} 
+    <ImageBackground
+      source={require('../assets/images/onboarding-bg.jpeg')}
       style={styles.background}
       resizeMode="cover"
     >
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
         <View style={styles.contentContainer}>
           <View style={styles.progressBarContainer}>
             {[0, 1, 2, 3, 4].map((i) => (
-              <View 
-                key={i} 
-                style={[styles.progressDot, i <= step ? styles.progressDotActive : null]} 
+              <View
+                key={i}
+                style={[styles.progressDot, i <= step ? styles.progressDotActive : null]}
               />
             ))}
           </View>
@@ -236,8 +229,8 @@ export default function OnboardingScreen() {
         visible={showScreenTimePicker}
         onClose={() => setShowScreenTimePicker(false)}
         onSelect={(val) => {
-            setTempoTela(val);
-            setShowScreenTimePicker(false);
+          setTempoTela(val);
+          setShowScreenTimePicker(false);
         }}
         currentValue={tempoTela}
         options={OPCOES_TELA}
@@ -307,7 +300,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-  
+
   selectionButton: {
     width: '100%',
     backgroundColor: 'rgba(255,255,255,0.08)',
@@ -382,7 +375,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     minHeight: 56,
-    width: 56,    
+    width: 56,
   },
 
   btnAction: {

@@ -124,8 +124,9 @@ const styles = StyleSheet.create({
   },
   conteudo: {
     color: COLORS.textoPrimario,
-    fontSize: 16,
+    fontSize: 18,
     fontFamily: 'Inter_400Regular',
-    lineHeight: 26,
+    lineHeight: 28,
+    textAlign: 'justify',
   },
 });

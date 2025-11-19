@@ -21,7 +21,7 @@ type Metas = {
   meta_sono_horas: number;
   meta_horario_dormir_minutos: number;
   meta_alerta_tela_minutos: number;
-  notificacao_tela_ativa: number;
+  notificacoes_ativas: number;
 };
 
 const formatMinutesToTime = (totalMinutes: number) => {
@@ -50,44 +50,17 @@ export default function PerfilScreen() {
   const db = useDatabase();
 
   const [metas, setMetas] = useState<Metas | null>(null);
-  const [notificacoesAtivas, setNotificacoesAtivas] = useState(true);
+  const [notificacoesAtivas, setNotificacoesAtivas] = useState(false);
 
   const [isHorarioPickerVisible, setIsHorarioPickerVisible] = useState(false);
   const [isHorasPickerVisible, setIsHorasPickerVisible] = useState(false);
   const [isDeactivateModalVisible, setIsDeactivateModalVisible] = useState(false);
   const [isTempoTelaModalVisible, setIsTempoTelaModalVisible] = useState(false);
 
-  const fetchMetas = useCallback(async () => {
-    try {
-      const result = await db.getFirstAsync<Metas>(
-        'SELECT * FROM metas WHERE id = 1'
-      );
-      setMetas(result);
-
-      if (notificacoesAtivas && result) {
-        agendarNotificacoes(
-          result.meta_horario_dormir_minutos,
-          result.meta_sono_horas,
-          result.meta_alerta_tela_minutos,
-          true
-        );
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, [db, notificacoesAtivas]);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchMetas();
-    }, [fetchMetas])
-  );
-
   const agendarNotificacoes = async (
     horarioMinutos: number,
     sonoHoras: number,
-    alertaTelaMin: number,
-    silencioso = false
+    alertaTelaMin: number
   ) => {
     await Notifications.cancelAllScheduledNotificationsAsync();
 
@@ -95,6 +68,7 @@ export default function PerfilScreen() {
 
     const horarioLembreteTela =
       (horarioMinutos - alertaTelaMin + minutosTotais) % minutosTotais;
+    
     const triggerHoraTela =
       Platform.OS === 'ios'
         ? {
@@ -120,6 +94,7 @@ export default function PerfilScreen() {
     });
 
     const horarioRegistro = (horarioMinutos + sonoHoras * 60) % minutosTotais;
+    
     const triggerHoraRegistro =
       Platform.OS === 'ios'
         ? {
@@ -146,15 +121,54 @@ export default function PerfilScreen() {
     });
   };
 
+  const fetchMetas = useCallback(async () => {
+    try {
+      const result = await db.getFirstAsync<Metas>(
+        'SELECT * FROM metas WHERE id = 1'
+      );
+      setMetas(result);
+
+      const dbNotificacoesAtivas = result?.notificacoes_ativas === 1;
+      setNotificacoesAtivas(dbNotificacoesAtivas);
+      
+      if (dbNotificacoesAtivas && result) {
+        agendarNotificacoes(
+          result.meta_horario_dormir_minutos,
+          result.meta_sono_horas,
+          result.meta_alerta_tela_minutos
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [db]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchMetas();
+    }, [fetchMetas])
+  );
+
+  const executeDeactivateNotifications = async () => {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+
+    await db.runAsync('UPDATE metas SET notificacoes_ativas = 0 WHERE id = 1');
+    
+    setNotificacoesAtivas(false);
+    setIsDeactivateModalVisible(false);
+  };
+
   const onToggleNotificacoes = async (ativo: boolean) => {
     if (ativo) {
       setNotificacoesAtivas(true);
+
+      await db.runAsync('UPDATE metas SET notificacoes_ativas = 1 WHERE id = 1');
+
       if (metas) {
         agendarNotificacoes(
           metas.meta_horario_dormir_minutos,
           metas.meta_sono_horas,
-          metas.meta_alerta_tela_minutos,
-          true
+          metas.meta_alerta_tela_minutos
         );
       }
     } else {
@@ -162,18 +176,12 @@ export default function PerfilScreen() {
     }
   };
 
-  const executeDeactivateNotifications = async () => {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-    setNotificacoesAtivas(false);
-    setIsDeactivateModalVisible(false);
-  };
 
   const onSelectTempoTela = async (minutos: number) => {
     if (!metas || minutos === metas.meta_alerta_tela_minutos) return;
 
-    setMetas((prev) =>
-      prev ? { ...prev, meta_alerta_tela_minutos: minutos } : null
-    );
+    const novasMetas = { ...metas, meta_alerta_tela_minutos: minutos };
+    setMetas(novasMetas);
 
     try {
       await db.runAsync(
@@ -182,10 +190,9 @@ export default function PerfilScreen() {
       );
       if (notificacoesAtivas) {
         agendarNotificacoes(
-          metas.meta_horario_dormir_minutos,
-          metas.meta_sono_horas,
-          minutos,
-          true
+          novasMetas.meta_horario_dormir_minutos,
+          novasMetas.meta_sono_horas,
+          minutos
         );
       }
     } catch (e) {
@@ -196,21 +203,20 @@ export default function PerfilScreen() {
   const onConfirmarNovoHorario = async (totalMinutes: number) => {
     if (!metas) return;
 
+    const novasMetas = { ...metas, meta_horario_dormir_minutos: totalMinutes };
+
     try {
       await db.runAsync(
         'UPDATE metas SET meta_horario_dormir_minutos = ? WHERE id = 1',
         [totalMinutes]
       );
-      setMetas((prev) =>
-        prev ? { ...prev, meta_horario_dormir_minutos: totalMinutes } : null
-      );
+      setMetas(novasMetas);
 
       if (notificacoesAtivas) {
         agendarNotificacoes(
           totalMinutes,
-          metas.meta_sono_horas,
-          metas.meta_alerta_tela_minutos,
-          true
+          novasMetas.meta_sono_horas,
+          novasMetas.meta_alerta_tela_minutos
         );
       }
     } catch (e) {
@@ -224,18 +230,19 @@ export default function PerfilScreen() {
     if (!metas) return;
     const horas = totalMinutes / 60;
 
+    const novasMetas = { ...metas, meta_sono_horas: horas };
+
     try {
       await db.runAsync('UPDATE metas SET meta_sono_horas = ? WHERE id = 1', [
         horas,
       ]);
-      setMetas((prev) => (prev ? { ...prev, meta_sono_horas: horas } : null));
+      setMetas(novasMetas);
 
       if (notificacoesAtivas) {
         agendarNotificacoes(
-          metas.meta_horario_dormir_minutos,
+          novasMetas.meta_horario_dormir_minutos,
           horas,
-          metas.meta_alerta_tela_minutos,
-          true
+          novasMetas.meta_alerta_tela_minutos
         );
       }
     } catch (e) {
@@ -368,7 +375,7 @@ export default function PerfilScreen() {
       <ConfirmModal
         visible={isDeactivateModalVisible}
         title="Desativar Lembretes?"
-        message="Tem certeza que deseja desligar todos os lembretes de sono e de tela?"
+        message="Tem certeza que deseja desligar todos os lembretes de sono e de tela? Você precisará reativá-los manualmente."
         onClose={() => setIsDeactivateModalVisible(false)}
         onConfirm={executeDeactivateNotifications}
         confirmText="Desativar"
