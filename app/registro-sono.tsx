@@ -55,8 +55,10 @@ export default function RegistroSonoModal() {
   const [erro, setErro] = useState<string | null>(null);
 
   const [isPickerVisible, setIsPickerVisible] = useState(false);
-  const [currentPicker, setCurrentPicker] = useState<'tela' | 'duracao' | null>(null);
-  
+  const [currentPicker, setCurrentPicker] = useState<'tela' | 'duracao' | null>(
+    null
+  );
+
   const [activeField, setActiveField] = useState<ActiveField>(null);
 
   useEffect(() => {
@@ -75,7 +77,7 @@ export default function RegistroSonoModal() {
         if (reg) {
           setIdEdicao(reg.id);
           setDataOriginal(reg.data);
-          
+
           setQualidade(reg.qualidade as Qualidade);
           setTempoTelaEmMinutos(reg.tempo_tela_min);
           setDuracaoEmMinutos(reg.duracao_horas * 60);
@@ -99,7 +101,7 @@ export default function RegistroSonoModal() {
       setErro('Por favor, selecione a qualidade do sono.');
       return;
     }
-    
+
     if (tempoTelaEmMinutos <= 0) {
       setErro('Informe o tempo de tela antes de dormir.');
       return;
@@ -113,6 +115,8 @@ export default function RegistroSonoModal() {
     try {
       const duracaoHoras = duracaoEmMinutos / 60;
       const tempoTelaMin = tempoTelaEmMinutos;
+
+      let action: 'created' | 'updated'; // Novo: Indica a ação realizada
 
       if (idEdicao && dataOriginal) {
         await db.runAsync(
@@ -129,11 +133,12 @@ export default function RegistroSonoModal() {
             idEdicao,
           ]
         );
+        action = 'updated'; // Ação de edição
       } else {
         const ontem = new Date();
         ontem.setDate(ontem.getDate() - 1);
         const dataParaSalvar = ontem.toISOString();
-        
+
         const checkDate = new Date(ontem);
         checkDate.setHours(0, 0, 0, 0);
         const startOfCheckDate = checkDate.toISOString();
@@ -141,8 +146,8 @@ export default function RegistroSonoModal() {
         const existing = await db.getFirstAsync<{ id: number }>(
           'SELECT id FROM registros_sono WHERE data >= ? AND data < ?',
           [
-            startOfCheckDate, 
-            new Date(checkDate.getTime() + 86400000).toISOString()
+            startOfCheckDate,
+            new Date(checkDate.getTime() + 86400000).toISOString(),
           ]
         );
 
@@ -162,6 +167,7 @@ export default function RegistroSonoModal() {
               existing.id,
             ]
           );
+          action = 'updated'; // Ação de 'refazer' (update)
         } else {
           await db.runAsync(
             `INSERT INTO registros_sono 
@@ -176,9 +182,16 @@ export default function RegistroSonoModal() {
               sentimento || null,
             ]
           );
+          action = 'created'; // Ação de criação
         }
       }
-        router.replace('/');
+      
+      // Manda a ação como parâmetro para a Home
+      router.replace({
+        pathname: '/',
+        params: { successAction: action },
+      });
+      
     } catch (e) {
       console.error(e);
       setErro('Ocorreu um erro ao salvar o registro.');
@@ -287,8 +300,10 @@ export default function RegistroSonoModal() {
           style={[styles.input, styles.textAreaDisplay]}
           onPress={() => setActiveField('observacoes')}
         >
-          <Text style={[styles.inputText, !observacoes && styles.placeholderText]}>
-            {observacoes || "Alguma anotação sobre a noite..."}
+          <Text
+            style={[styles.inputText, !observacoes && styles.placeholderText]}
+          >
+            {observacoes || 'Alguma anotação sobre a noite...'}
           </Text>
         </TouchableOpacity>
 
@@ -297,8 +312,10 @@ export default function RegistroSonoModal() {
           style={styles.input}
           onPress={() => setActiveField('sentimento')}
         >
-          <Text style={[styles.inputText, !sentimento && styles.placeholderText]}>
-            {sentimento || "Ex: Cansado, disposto, etc."}
+          <Text
+            style={[styles.inputText, !sentimento && styles.placeholderText]}
+          >
+            {sentimento || 'Ex: Cansado, disposto, etc.'}
           </Text>
         </TouchableOpacity>
 

@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
 import ConfirmModal from '../../components/ConfirmModal';
+import Toast from '../../components/Toast';
 import { COLORS } from '../../constants/Colors';
 import { useDatabase } from '../../context/DatabaseContext';
 
@@ -35,11 +37,15 @@ const formatarHoras = (decimal: number) => {
 export default function HomeScreen() {
   const router = useRouter();
   const db = useDatabase();
+  const params = useLocalSearchParams();
   
   const [meta, setMeta] = useState<Meta | null>(null);
   const [ultimoRegistro, setUltimoRegistro] = useState<UltimoRegistro | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const fetchData = useCallback(async () => {
     if (!db) return;
@@ -61,11 +67,32 @@ export default function HomeScreen() {
       setRefreshing(false);
     }
   }, [db]);
+  
+  const handleHideToast = () => {
+    setToastVisible(false);
+  };
 
   useFocusEffect(
     useCallback(() => {
       fetchData();
-    }, [fetchData])
+
+      if (params.successAction) {
+        let message = '';
+        const action = params.successAction as 'created' | 'updated';
+        
+        if (action === 'created') {
+          message = 'Registro de sono salvo com sucesso!';
+        } else if (action === 'updated') {
+          message = 'Registro de sono atualizado!';
+        }
+        
+        setToastMessage(message);
+        setToastVisible(true); 
+
+        router.setParams({ successAction: undefined });
+      }
+
+    }, [fetchData, params.successAction, router]) // <--- CORREÇÃO: Adicionado 'router'
   );
 
   const handleRegistrarPress = () => {
@@ -76,11 +103,13 @@ export default function HomeScreen() {
 
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
-    const hojeString = hoje.toISOString().split('T')[0];
     const dataUltimo = new Date(ultimoRegistro.data);
-    const dataUltimoString = dataUltimo.toISOString().split('T')[0];
+    
+    const hojeStart = hoje.getTime();
+    const dataUltimoStart = new Date(dataUltimo.getFullYear(), dataUltimo.getMonth(), dataUltimo.getDate()).getTime();
+    
 
-    if (hojeString === dataUltimoString) {
+    if (hojeStart === dataUltimoStart) {
       setShowConfirmModal(true);
     } else {
       router.push('/registro-sono');
@@ -89,7 +118,7 @@ export default function HomeScreen() {
 
   const confirmarRefazer = () => {
     setShowConfirmModal(false);
-    router.push('/registro-sono');
+    router.push('/registro-sono'); 
   };
 
   const metaHoras = meta?.meta_sono_horas ?? 8;
@@ -170,15 +199,23 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      
       <ConfirmModal
         visible={showConfirmModal}
-        title="Registro existente"
-        message="Você já registrou seu sono hoje. Tem certeza que deseja refazer o registro? O antigo será apagado."
+        title="Registro Existente"
+        message={`Olá, ${primeiroNome}! Você já registrou seu sono hoje. Tem certeza que deseja refazer o registro? Isso apagará o registro anterior.`}
         onClose={() => setShowConfirmModal(false)}
         onConfirm={confirmarRefazer}
         confirmText="Sim, refazer"
         cancelText="Cancelar"
       />
+      
+      <Toast 
+        isVisible={toastVisible}
+        message={toastMessage}
+        onHide={handleHideToast}
+      />
+      
     </SafeAreaView>
   );
 }

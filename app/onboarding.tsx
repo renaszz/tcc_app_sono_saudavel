@@ -3,14 +3,14 @@ import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ImageBackground,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import TempoTelaModal from '../components/TempoTelaModal';
 import TimePickerModal from '../components/TimePickerModal';
@@ -98,9 +98,8 @@ export default function OnboardingScreen() {
               placeholderTextColor={COLORS.textoSecundario}
               value={nome}
               onChangeText={setNome}
-              autoFocus
             />
-            <TouchableOpacity style={[styles.btnProximo, styles.btnFull]} onPress={nextStep}>
+            <TouchableOpacity style={[styles.btnProximo, styles.btnFull]} onPress={nextStep} disabled={nome.trim() === ''}>
               <Text style={styles.btnText}>Continuar</Text>
               <Ionicons name="arrow-forward" size={20} color="#FFF" />
             </TouchableOpacity>

@@ -38,7 +38,6 @@ export default function InputModal({
   useEffect(() => {
     if (visible) {
       setText(initialText);
-      // Força o foco com um pequeno delay para garantir que o Modal carregou
       const timer = setTimeout(() => {
         inputRef.current?.focus();
       }, 100);
