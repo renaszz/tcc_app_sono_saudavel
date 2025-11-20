@@ -16,6 +16,7 @@ import TempoTelaModal from '../../components/TempoTelaModal';
 import TimePickerModal from '../../components/TimePickerModal';
 import { COLORS } from '../../constants/Colors';
 import { useDatabase } from '../../context/DatabaseContext';
+import { getFeedbackMetaSono } from '../../utils/sleepFeedback';
 
 type Metas = {
   meta_sono_horas: number;
@@ -176,7 +177,6 @@ export default function PerfilScreen() {
     }
   };
 
-
   const onSelectTempoTela = async (minutos: number) => {
     if (!metas || minutos === metas.meta_alerta_tela_minutos) return;
 
@@ -272,6 +272,8 @@ export default function PerfilScreen() {
     return option ? option.label : `${metas.meta_alerta_tela_minutos} min`;
   };
 
+  const feedbackSono = metas ? getFeedbackMetaSono(metas.meta_sono_horas * 60) : { msg: '...', color: COLORS.destaque };
+
   return (
     <>
       <ScrollView
@@ -307,7 +309,10 @@ export default function PerfilScreen() {
         >
           <View style={styles.prototipo}>
             <Text style={styles.rowLabel}>Meta de horas de sono</Text>
-            <Text style={styles.rowLabel2}>{metaHorasFormatada}</Text>
+            <Text style={[styles.rowLabel2]}>{metaHorasFormatada}</Text>
+            <Text style={{ color: feedbackSono.color, fontSize: 12, fontFamily: 'Inter_500Medium' }}>
+              {feedbackSono.msg}
+            </Text>
           </View>
           <View style={styles.rowValueContainer}>
             <Ionicons

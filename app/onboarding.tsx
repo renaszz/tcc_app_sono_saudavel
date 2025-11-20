@@ -16,6 +16,7 @@ import TempoTelaModal from '../components/TempoTelaModal';
 import TimePickerModal from '../components/TimePickerModal';
 import { COLORS } from '../constants/Colors';
 import { useDatabase } from '../context/DatabaseContext';
+import { getFeedbackMetaSono } from '../utils/sleepFeedback';
 
 const OPCOES_TELA = [
   { label: '15 Minutos', value: 15 },
@@ -103,7 +104,7 @@ export default function OnboardingScreen() {
           </>
         );
 
-      case 1:
+      case 1: // NOME
         return (
           <>
             <Text style={styles.questionText}>Qual sua meta de horário para dormir?</Text>
@@ -125,7 +126,7 @@ export default function OnboardingScreen() {
           </>
         );
 
-      case 2:
+      case 2: // TEMPO DE TELA
         return (
           <>
             <Text style={styles.questionText}>Quanto tempo antes de dormir você quer deixar o celular?</Text>
@@ -149,14 +150,27 @@ export default function OnboardingScreen() {
           </>
         );
 
-      case 3:
+      case 3: // META DE SONO
+        const feedback = getFeedbackMetaSono(metaSonoMinutos);
+        
         return (
           <>
             <Text style={styles.questionText}>Qual sua meta de tempo de sono?</Text>
 
-            <TouchableOpacity style={styles.selectionButton} onPress={() => setShowDurationPicker(true)}>
+            <TouchableOpacity 
+              style={[styles.selectionButton, { borderColor: feedback.color, borderWidth: 1 }]} 
+              onPress={() => setShowDurationPicker(true)}
+            >
               <Text style={styles.selectionLabel}>Meta de sono</Text>
-              <Text style={styles.selectionValue}>{formatDuration(metaSonoMinutos)}</Text>
+              <Text style={[styles.selectionValue, { color: feedback.color }]}>{formatDuration(metaSonoMinutos)}</Text>
+              
+              <View style={styles.feedbackContainer}>
+                <Ionicons name={feedback.icon} size={16} color={feedback.color} style={styles.feedbackIcon} />
+                <Text style={[styles.feedbackText, { color: feedback.color }]}>
+                  {feedback.msg}
+                </Text>
+              </View>
+
               <Text style={styles.tapToEditText}>(Toque para alterar)</Text>
             </TouchableOpacity>
 
@@ -171,7 +185,7 @@ export default function OnboardingScreen() {
           </>
         );
 
-      case 4:
+      case 4: // META DE USO DE TELA E NOTIFICAÇÕES
         return (
           <>
             <Text style={styles.questionText}>Ative as notificações para um sono melhor!</Text>
@@ -300,7 +314,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-
   selectionButton: {
     width: '100%',
     backgroundColor: 'rgba(255,255,255,0.08)',
@@ -333,15 +346,14 @@ const styles = StyleSheet.create({
   tapToEditText: {
     color: 'rgba(255,255,255,0.4)',
     fontSize: 12,
+    marginTop: 8,
   },
-
   navButtons: {
     flexDirection: 'row',
     width: '100%',
     alignItems: 'center',
     gap: 15,
   },
-
   btnProximo: {
     backgroundColor: COLORS.destaque,
     flexDirection: 'row',
@@ -353,21 +365,17 @@ const styles = StyleSheet.create({
     gap: 10,
     minHeight: 56,
   },
-
   btnFull: {
     width: '100%',
   },
-
   btnFlex: {
     flex: 1,
   },
-
   btnText: {
     color: '#FFF',
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
   },
-
   btnBack: {
     padding: 16,
     backgroundColor: 'rgba(255,255,255,0.1)',
@@ -377,7 +385,6 @@ const styles = StyleSheet.create({
     minHeight: 56,
     width: 56,
   },
-
   btnAction: {
     backgroundColor: COLORS.destaque,
     flexDirection: 'row',
@@ -395,13 +402,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
   },
-  btnLink: {
-    padding: 10,
-    minHeight: 40,
-    justifyContent: 'center',
+  feedbackContainer: {
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginTop: 8, 
+    paddingHorizontal: 10,
   },
-  linkText: {
-    color: COLORS.textoSecundario,
-    fontSize: 14,
+  feedbackIcon: {
+    marginRight: 6,
+  },
+  feedbackText: {
+    fontSize: 13, 
+    fontFamily: 'Inter_500Medium', 
+    textAlign: 'center',
   }
 });

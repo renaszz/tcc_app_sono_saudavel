@@ -1,16 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import {
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import { COLORS } from '../constants/Colors';
 
-// Interface de props movida para este arquivo
 interface TimePickerModalProps {
   visible: boolean;
   onClose: () => void;
@@ -18,7 +17,6 @@ interface TimePickerModalProps {
   initialMinutes?: number;
 }
 
-// O componente, agora exportado como default
 const TimePickerModal = ({
   visible,
   onClose,
@@ -128,7 +126,6 @@ const TimePickerModal = ({
   );
 };
 
-// Estilos específicos do Modal
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
