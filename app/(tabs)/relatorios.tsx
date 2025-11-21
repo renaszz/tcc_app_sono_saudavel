@@ -31,7 +31,7 @@ type RegistroProcessado = RegistroDB & {
 
 type ChartData = {
   x_id: number;
-  valor: number; // Valor limitado (clamped) para o gráfico
+  valor: number;
   dia: string;
 };
 
@@ -41,6 +41,28 @@ const diasDaSemana = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const MAX_SONO_HORAS_CHART = 9.8;
 const MAX_TELA_MIN_CHART = 88;
 const newYellow = '#FFDA00';
+
+const getLocalDateString = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const formatHoursToTime = (decimalHours: number) => {
+  const h = Math.floor(decimalHours);
+  const m = Math.round((decimalHours - h) * 60);
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+};
+
+const formatMinutesToTime = (totalMinutes: number) => {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+};
 
 export default function RelatoriosScreen() {
   const font = useFont(Inter_400Regular, 12);
@@ -56,22 +78,28 @@ export default function RelatoriosScreen() {
   const loadData = useCallback(async () => {
     try {
       const today = new Date();
+      
       const endOfPeriod = new Date(today);
       endOfPeriod.setDate(today.getDate() - 1);
-      endOfPeriod.setHours(23, 59, 59, 999);
+      
       const startOfPeriod = new Date(endOfPeriod);
       startOfPeriod.setDate(endOfPeriod.getDate() - 6);
-      startOfPeriod.setHours(0, 0, 0, 0);
+
+      const startStr = getLocalDateString(startOfPeriod);
+      const endStr = getLocalDateString(endOfPeriod);
 
       const dbRegistrosSemana = await db.getAllAsync<RegistroDB>(
         'SELECT * FROM registros_sono WHERE data >= ? AND data <= ? ORDER BY data ASC',
-        [startOfPeriod.toISOString(), endOfPeriod.toISOString()]
+        [startStr, endStr]
       );
 
-      const processedSemana = dbRegistrosSemana.map((reg) => ({
-        ...reg,
-        dia: diasDaSemana[new Date(reg.data).getDay()],
-      }));
+      const processedSemana = dbRegistrosSemana.map((reg) => {
+        const dateObj = new Date(reg.data + 'T12:00:00');
+        return {
+          ...reg,
+          dia: diasDaSemana[dateObj.getDay()],
+        };
+      });
 
       setRegistrosDaSemana(processedSemana);
 
@@ -79,10 +107,13 @@ export default function RelatoriosScreen() {
         'SELECT * FROM registros_sono ORDER BY data DESC'
       );
 
-      const processedHistorico = dbHistorico.map((reg) => ({
-        ...reg,
-        dia: diasDaSemana[new Date(reg.data).getDay()],
-      }));
+      const processedHistorico = dbHistorico.map((reg) => {
+        const dateObj = new Date(reg.data + 'T12:00:00');
+        return {
+          ...reg,
+          dia: diasDaSemana[dateObj.getDay()],
+        };
+      });
 
       setHistoricoCompleto(processedHistorico);
     } catch (e) {
@@ -97,8 +128,6 @@ export default function RelatoriosScreen() {
   );
 
   useEffect(() => {
-    const dates = [];
-    
     const today = new Date();
     const endOfPeriod = new Date(today);
     endOfPeriod.setDate(today.getDate() - 1);
@@ -106,19 +135,16 @@ export default function RelatoriosScreen() {
     const startOfChart = new Date(endOfPeriod);
     startOfChart.setDate(startOfChart.getDate() - 6);
 
+    const dataForChart: ChartData[] = [];
+
     for (let i = 0; i < 7; i++) {
       const d = new Date(startOfChart);
       d.setDate(d.getDate() + i);
-      dates.push(d);
-    }
+      
+      const dateStr = getLocalDateString(d);
+      const dayInitial = diasDaSemana[d.getDay()];
 
-    const dataForChart = dates.map((date, i) => {
-      const dayInitial = diasDaSemana[date.getDay()];
-      const dateStringISO = date.toISOString().split('T')[0];
-
-      const record = registrosDaSemana.find(
-        (r) => new Date(r.data).toISOString().split('T')[0] === dateStringISO
-      );
+      const record = registrosDaSemana.find((r) => r.data === dateStr);
 
       let valor = 0;
       const maxLimit = activeTab === 'sono' ? MAX_SONO_HORAS_CHART : MAX_TELA_MIN_CHART;
@@ -129,18 +155,17 @@ export default function RelatoriosScreen() {
             ? record.duracao_horas
             : record.tempo_tela_min;
         
-        // Limita o valor para o ponto de plotagem, garantindo que não exceda o limite visual.
         valor = Math.min(realValue, maxLimit); 
       }
 
-      return {
+      dataForChart.push({
         x_id: i,
         valor,
         dia: dayInitial,
-      };
-    });
+      });
+    }
 
-    setChartData(dataForChart as ChartData[]);
+    setChartData(dataForChart);
   }, [registrosDaSemana, activeTab]);
 
   const onRefresh = async () => {
@@ -150,7 +175,7 @@ export default function RelatoriosScreen() {
   };
 
   const formatarData = (isoData: string) => {
-    const data = new Date(isoData);
+    const data = new Date(isoData + 'T12:00:00');
     return data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' });
   };
 
@@ -202,8 +227,8 @@ export default function RelatoriosScreen() {
       <View style={{ flex: 1, marginRight: 8 }}>
         <Text style={styles.historyItemText}>{formatarData(item.data)}</Text>
         <Text style={styles.historyItemSubtext}>
-          Qualidade: {item.qualidade} / Tela: {item.tempo_tela_min} min / Sono:{' '}
-          {item.duracao_horas.toFixed(1)}h
+          Qualidade: {item.qualidade} / Tela: {formatMinutesToTime(item.tempo_tela_min)} / Sono:{' '}
+          {formatHoursToTime(item.duracao_horas)}
         </Text>
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -237,7 +262,6 @@ export default function RelatoriosScreen() {
 
   const hasChartData = chartData.some((d) => d.valor > 0);
 
-  // Revertendo para os limites originais (10h e 90m)
   const isSono = activeTab === 'sono';
   const yDomain: [number, number] = isSono
     ? [0, MAX_SONO_HORAS_CHART]
@@ -251,7 +275,6 @@ export default function RelatoriosScreen() {
     isSono
       ? ['#37E2D5', '#37E2D580']
       : [newYellow, newYellow + '80'];
-
 
   return (
     <View style={styles.container}>

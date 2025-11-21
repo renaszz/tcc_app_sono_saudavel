@@ -37,6 +37,13 @@ const formatMinutes = (minutes: number) => {
   return `${h}h ${m.toString().padStart(2, '0')}m`;
 };
 
+const getLocalDateString = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function RegistroSonoModal() {
   const db = useDatabase();
   const router = useRouter();
@@ -116,7 +123,7 @@ export default function RegistroSonoModal() {
       const duracaoHoras = duracaoEmMinutos / 60;
       const tempoTelaMin = tempoTelaEmMinutos;
 
-      let action: 'created' | 'updated'; // Novo: Indica a ação realizada
+      let action: 'created' | 'updated';
 
       if (idEdicao && dataOriginal) {
         await db.runAsync(
@@ -133,32 +140,25 @@ export default function RegistroSonoModal() {
             idEdicao,
           ]
         );
-        action = 'updated'; // Ação de edição
+        action = 'updated';
       } else {
         const ontem = new Date();
         ontem.setDate(ontem.getDate() - 1);
-        const dataParaSalvar = ontem.toISOString();
-
-        const checkDate = new Date(ontem);
-        checkDate.setHours(0, 0, 0, 0);
-        const startOfCheckDate = checkDate.toISOString();
+        
+        const dataParaSalvar = getLocalDateString(ontem);
 
         const existing = await db.getFirstAsync<{ id: number }>(
-          'SELECT id FROM registros_sono WHERE data >= ? AND data < ?',
-          [
-            startOfCheckDate,
-            new Date(checkDate.getTime() + 86400000).toISOString(),
-          ]
+          'SELECT id FROM registros_sono WHERE data = ?',
+          [dataParaSalvar]
         );
 
         if (existing) {
           await db.runAsync(
             `UPDATE registros_sono SET 
-               data = ?, qualidade = ?, tempo_tela_min = ?, duracao_horas = ?, 
+               qualidade = ?, tempo_tela_min = ?, duracao_horas = ?, 
                observacoes = ?, sentimento_acordar = ?
              WHERE id = ?`,
             [
-              dataParaSalvar,
               qualidade,
               tempoTelaMin,
               duracaoHoras,
@@ -167,7 +167,7 @@ export default function RegistroSonoModal() {
               existing.id,
             ]
           );
-          action = 'updated'; // Ação de 'refazer' (update)
+          action = 'updated';
         } else {
           await db.runAsync(
             `INSERT INTO registros_sono 
@@ -182,11 +182,10 @@ export default function RegistroSonoModal() {
               sentimento || null,
             ]
           );
-          action = 'created'; // Ação de criação
+          action = 'created';
         }
       }
       
-      // Manda a ação como parâmetro para a Home
       router.replace({
         pathname: '/',
         params: { successAction: action },

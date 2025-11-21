@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import {
   ImageBackground,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   StyleSheet,
   Text,
@@ -12,6 +13,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import ConfirmModal from '../components/ConfirmModal';
 import TempoTelaModal from '../components/TempoTelaModal';
 import TimePickerModal from '../components/TimePickerModal';
 import { COLORS } from '../constants/Colors';
@@ -51,12 +53,19 @@ export default function OnboardingScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showDurationPicker, setShowDurationPicker] = useState(false);
   const [showScreenTimePicker, setShowScreenTimePicker] = useState(false);
+  
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
 
   const finalizarOnboarding = async () => {
     try {
       const { status } = await Notifications.requestPermissionsAsync();
-      const notificacoesAtivas = status === 'granted' ? 1 : 0;
+      
+      if (status !== 'granted') {
+        setShowPermissionModal(true);
+        return; 
+      }
 
+      const notificacoesAtivas = 1;
       const metaSonoHoras = metaSonoMinutos / 60;
 
       await db.runAsync(`
@@ -248,6 +257,19 @@ export default function OnboardingScreen() {
         }}
         currentValue={tempoTela}
         options={OPCOES_TELA}
+      />
+
+      <ConfirmModal
+        visible={showPermissionModal}
+        title="Permissão Necessária"
+        message="Para que o GoodSleep funcione corretamente, precisamos que você ative as notificações nas configurações do seu aparelho."
+        onClose={() => setShowPermissionModal(false)}
+        onConfirm={() => {
+          setShowPermissionModal(false);
+          Linking.openSettings();
+        }}
+        confirmText="Ir para Configurações"
+        cancelText="Cancelar"
       />
 
     </ImageBackground>

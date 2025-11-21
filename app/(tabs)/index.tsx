@@ -15,6 +15,7 @@ interface Meta {
 }
 
 interface UltimoRegistro {
+  id: number;
   duracao_horas: number;
   data: string;
 }
@@ -57,7 +58,7 @@ export default function HomeScreen() {
       setMeta(metaResult);
 
       const ultimoReg = await db.getFirstAsync<UltimoRegistro>(
-        'SELECT duracao_horas, data FROM registros_sono ORDER BY data DESC LIMIT 1'
+        'SELECT id, duracao_horas, data FROM registros_sono ORDER BY data DESC LIMIT 1'
       );
       setUltimoRegistro(ultimoReg);
 
@@ -78,21 +79,25 @@ export default function HomeScreen() {
 
       if (params.successAction) {
         let message = '';
-        const action = params.successAction as 'created' | 'updated';
+        const action = params.successAction as 'created' | 'updated' | 'deleted';
         
         if (action === 'created') {
           message = 'Registro de sono salvo com sucesso!';
         } else if (action === 'updated') {
           message = 'Registro de sono atualizado!';
+        } else if (action === 'deleted') {
+          message = 'Registro excluído com sucesso.';
         }
         
-        setToastMessage(message);
-        setToastVisible(true); 
+        if (message) {
+          setToastMessage(message);
+          setToastVisible(true); 
+        }
 
         router.setParams({ successAction: undefined });
       }
 
-    }, [fetchData, params.successAction, router]) // <--- CORREÇÃO: Adicionado 'router'
+    }, [fetchData, params.successAction, router])
   );
 
   const handleRegistrarPress = () => {
@@ -101,24 +106,33 @@ export default function HomeScreen() {
       return;
     }
 
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const dataUltimo = new Date(ultimoRegistro.data);
+    // CORREÇÃO: Verificar com a data de "Ontem" (pois é o padrão de salvamento)
+    const ontem = new Date();
+    ontem.setDate(ontem.getDate() - 1);
     
-    const hojeStart = hoje.getTime();
-    const dataUltimoStart = new Date(dataUltimo.getFullYear(), dataUltimo.getMonth(), dataUltimo.getDate()).getTime();
-    
+    const ano = ontem.getFullYear();
+    const mes = String(ontem.getMonth() + 1).padStart(2, '0');
+    const dia = String(ontem.getDate()).padStart(2, '0');
+    const ontemString = `${ano}-${mes}-${dia}`;
 
-    if (hojeStart === dataUltimoStart) {
+    // Compara se a data do último registro no banco é igual a data de ontem
+    if (ultimoRegistro.data === ontemString) {
       setShowConfirmModal(true);
     } else {
       router.push('/registro-sono');
     }
   };
 
-  const confirmarRefazer = () => {
+  const handleEditarHoje = () => {
     setShowConfirmModal(false);
-    router.push('/registro-sono'); 
+    if (ultimoRegistro?.id) {
+      router.push({
+        pathname: '/registro-sono',
+        params: { id: ultimoRegistro.id }
+      }); 
+    } else {
+      router.push('/registro-sono');
+    }
   };
 
   const metaHoras = meta?.meta_sono_horas ?? 8;
@@ -203,10 +217,10 @@ export default function HomeScreen() {
       <ConfirmModal
         visible={showConfirmModal}
         title="Registro Existente"
-        message={`Olá, ${primeiroNome}! Você já registrou seu sono hoje. Tem certeza que deseja refazer o registro? Isso apagará o registro anterior.`}
+        message={`Olá, ${primeiroNome}! Você já registrou seu sono hoje. Deseja editá-lo?`}
         onClose={() => setShowConfirmModal(false)}
-        onConfirm={confirmarRefazer}
-        confirmText="Sim, refazer"
+        onConfirm={handleEditarHoje}
+        confirmText="Editar"
         cancelText="Cancelar"
       />
       

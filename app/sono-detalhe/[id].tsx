@@ -23,6 +23,21 @@ type RegistroDB = {
   sentimento_acordar: string | null;
 };
 
+const formatHoursToTime = (decimalHours: number) => {
+  const h = Math.floor(decimalHours);
+  const m = Math.round((decimalHours - h) * 60);
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+};
+
+const formatMinutesToTime = (totalMinutes: number) => {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h === 0) return `${m} min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+};
+
 const DetalheItem = ({
   icon,
   label,
@@ -241,12 +256,12 @@ export default function DetalheRegistroScreen() {
           <DetalheItem
             icon="bed-outline"
             label="Duração"
-            value={`${registro.duracao_horas.toFixed(1)}h`}
+            value={formatHoursToTime(registro.duracao_horas)}
           />
           <DetalheItem
             icon="phone-portrait-outline"
             label="Tempo de Tela"
-            value={`${registro.tempo_tela_min} min`}
+            value={formatMinutesToTime(registro.tempo_tela_min)}
           />
           <DetalheItem
             icon="happy-outline"
